@@ -5,7 +5,7 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import one.digitalinnovation.gof.exception.ResourceNotFoundException;
+import one.digitalinnovation.gof.controller.exceptions.ClienteNotFoundException;
 import one.digitalinnovation.gof.model.Cliente;
 import one.digitalinnovation.gof.model.ClienteRepository;
 import one.digitalinnovation.gof.model.Endereco;
@@ -47,19 +47,19 @@ public class ClienteServiceImpl implements ClienteService {
 	}
 
 	@Override
-	public void inserir(Cliente cliente) {
-		salvarClienteComCep(cliente);
+	public Cliente inserir(Cliente cliente) {
+		return salvarClienteComCep(cliente);
 	}
 
 	@Override
-	public void atualizar(Long id, Cliente cliente) {
+	public Cliente atualizar(Long id, Cliente cliente) {
 		Cliente clienteDb = verificaSeClienteExiste(id);
 
 		clienteDb.setNome(cliente.getNome());
 		clienteDb.setEndereco(cliente.getEndereco());
 		cliente.setId(clienteDb.getId());
 
-		clienteRepository.save(clienteDb);
+		return clienteRepository.save(clienteDb);
 	}
 
 	@Override
@@ -69,21 +69,23 @@ public class ClienteServiceImpl implements ClienteService {
 		clienteRepository.deleteById(id);
 	}
 
-	private void salvarClienteComCep(Cliente cliente) {
+	private Cliente salvarClienteComCep(Cliente cliente) {
 		String cep = cliente.getEndereco().getCep();
 		Endereco endereco = enderecoRepository.findById(cep).orElseGet(() -> {
 			Endereco novoEndereco = viaCepService.consultarCep(cep);
 			enderecoRepository.save(novoEndereco);
 			return novoEndereco;
 		});
+
 		cliente.setEndereco(endereco);
-		clienteRepository.save(cliente);
+
+		return clienteRepository.save(cliente);
 	}
 
-	private Cliente verificaSeClienteExiste(Long id) {
+	private Cliente verificaSeClienteExiste(Long id) throws ClienteNotFoundException {
 		Optional<Cliente> clienteExistente = clienteRepository.findById(id);
 		if (!clienteExistente.isPresent()) {
-			throw new ResourceNotFoundException("Cliente não encontrado com o ID: " + id);
+			throw new ClienteNotFoundException(id);
 		}
 
 		return clienteExistente.get();
